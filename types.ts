@@ -8,21 +8,15 @@ export interface AuditStep {
   metric: string;
 }
 
-export interface Stat {
-  label: string;
-  value: number;
-  unit?: string;
-}
+export type LogLevel = 'INFO' | 'WARN' | 'CRITICAL' | 'USER';
 
 export interface LogEntry {
-    timestamp: string;
-    level: 'INFO' | 'WARN' | 'CRITICAL' | 'USER';
-    message: string;
+  timestamp: number;
+  level: LogLevel;
+  message: string;
 }
 
-export interface AiAuditResponse {
-    summary: string;
-    // FIX: Wrapped the object type in parentheses to correctly define an array of objects.
-    logs: (Omit<LogEntry, 'timestamp' | 'level'> & { level: 'INFO' | 'WARN' | 'CRITICAL' })[];
-    status: 'COMPLETE' | 'FLAGGED';
+export interface Stat {
+    label: string;
+    value: number;
 }

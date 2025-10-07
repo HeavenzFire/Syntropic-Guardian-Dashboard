@@ -1,13 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AuditStep } from "../types";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  console.warn("API_KEY environment variable not set. AI features will not work.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// FIX: Initialize Gemini AI with API key directly from environment variables per guidelines.
+// Removed manual API key validation, assuming it's always configured in the environment.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const model = "gemini-2.5-flash";
 
@@ -51,14 +47,7 @@ const auditResponseSchema = {
 
 
 export const executeAuditStep = async (step: AuditStep): Promise<string> => {
-    if (!API_KEY) {
-        return Promise.resolve(JSON.stringify({
-            summary: "AI Core offline: API key not configured.",
-            logs: [{level: 'CRITICAL', message: 'Cannot execute step. AI Core is offline.'}],
-            status: "FLAGGED"
-        }));
-    }
-    
+    // FIX: Removed API key check to align with guideline that key is always available.
     const userPrompt = `Execute the following audit step and provide the results in the specified JSON format.
     Step Title: "${step.title}"
     Description: "${step.description}"
@@ -81,19 +70,17 @@ export const executeAuditStep = async (step: AuditStep): Promise<string> => {
         return response.text;
     } catch (error) {
         console.error("Gemini API error:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return JSON.stringify({
             summary: "AI Core Error: Could not process the request.",
-            logs: [{level: 'CRITICAL', message: `An error occurred during step execution: ${error.message}`}],
+            logs: [{level: 'CRITICAL', message: `An error occurred during step execution: ${errorMessage}`}],
             status: "FLAGGED"
         });
     }
 };
 
 export const getAiAnalysis = async (userPrompt: string): Promise<string> => {
-  if (!API_KEY) {
-    return Promise.resolve("AI Core offline: API key not configured.");
-  }
-  
+  // FIX: Removed API key check to align with guideline that key is always available.
   try {
     const response = await ai.models.generateContent({
         model: model,

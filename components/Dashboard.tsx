@@ -1,80 +1,70 @@
-import React, { useState } from 'react';
-import Card from './Card';
-import GlobalMap from './GlobalMap';
-import AuditTimeline from './AuditTimeline';
+import React, { useState, useCallback } from 'react';
 import StatsPanel from './StatsPanel';
+import AuditTimeline from './AuditTimeline';
 import LiveLog from './LiveLog';
+import GlobalMap from './GlobalMap';
 import GeminiQuery from './GeminiQuery';
 import { AUDIT_STEPS_DATA, INITIAL_LOGS } from '../constants';
-import { AuditStep, LogEntry, AiAuditResponse } from '../types';
+import { AuditStep, LogEntry, LogLevel } from '../types';
 import { executeAuditStep } from '../services/geminiService';
 
 const Dashboard: React.FC = () => {
-  const [auditSteps, setAuditSteps] = useState<AuditStep[]>(AUDIT_STEPS_DATA);
-  const [logEntries, setLogEntries] = useState<LogEntry[]>(
-    INITIAL_LOGS.map(log => ({ ...log, timestamp: new Date().toISOString() }))
+  const [steps, setSteps] = useState<AuditStep[]>(AUDIT_STEPS_DATA);
+  const [logs, setLogs] = useState<LogEntry[]>(
+    INITIAL_LOGS.map(log => ({ ...log, timestamp: Date.now() }))
   );
+  
+  const addLog = useCallback((level: LogLevel, message: string) => {
+    setLogs(prev => [...prev, { timestamp: Date.now(), level, message }]);
+  }, []);
 
-  const addLogEntry = (level: LogEntry['level'], message: string) => {
-    setLogEntries(prev => [...prev, { level, message, timestamp: new Date().toISOString() }]);
-  };
-
-  const handleInitiateStep = async (stepId: string) => {
-    const stepIndex = auditSteps.findIndex(s => s.id === stepId);
+  const handleInitiateStep = useCallback(async (id: string) => {
+    const stepIndex = steps.findIndex(s => s.id === id);
     if (stepIndex === -1) return;
-    
-    const stepToRun = auditSteps[stepIndex];
 
-    setAuditSteps(prev => prev.map(s => s.id === stepId ? { ...s, status: 'IN_PROGRESS' } : s));
-    addLogEntry('USER', `User initiated: ${stepToRun.title}`);
+    const stepToRun = steps[stepIndex];
+    
+    setSteps(prev => prev.map(s => s.id === id ? { ...s, status: 'IN_PROGRESS' } : s));
+    addLog('INFO', `Initiating Audit Step: ${stepToRun.title}`);
 
     try {
         const resultJson = await executeAuditStep(stepToRun);
-        const result: AiAuditResponse = JSON.parse(resultJson.trim());
+        const result = JSON.parse(resultJson);
 
-        result.logs.forEach((log, i) => {
-            setTimeout(() => {
-                addLogEntry(log.level, log.message);
-            }, (i + 1) * 500);
+        result.logs.forEach((log: {level: LogLevel, message: string}) => {
+            addLog(log.level, log.message);
         });
+        addLog('INFO', `Step Summary: ${result.summary}`);
 
-        setTimeout(() => {
-            setAuditSteps(prev => prev.map(s => s.id === stepId ? { ...s, status: result.status } : s));
-            addLogEntry('INFO', `Step "${stepToRun.title}" completed with status: ${result.status}. Summary: ${result.summary}`);
-        }, (result.logs.length + 1) * 500);
+        setSteps(prev => prev.map(s => s.id === id ? { ...s, status: result.status } : s));
+        addLog('INFO', `Audit Step "${stepToRun.title}" completed with status: ${result.status}.`);
 
     } catch (error) {
         console.error("Failed to execute audit step:", error);
-        setAuditSteps(prev => prev.map(s => s.id === stepId ? { ...s, status: 'FLAGGED' } : s));
-        addLogEntry('CRITICAL', `Execution failed for step "${stepToRun.title}". Please review logs.`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addLog('CRITICAL', `Execution failed for step "${stepToRun.title}": ${errorMessage}`);
+        setSteps(prev => prev.map(s => s.id === id ? { ...s, status: 'FLAGGED' } : s));
     }
-  };
+  }, [steps, addLog]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
-      <div className="lg:col-span-12">
+    <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="lg:col-span-4">
         <StatsPanel />
       </div>
-
-      <div className="lg:col-span-8 h-[500px]">
-        <GlobalMap />
+      <div className="md:col-span-2 lg:col-span-1 row-span-2">
+        <AuditTimeline steps={steps} onInitiateStep={handleInitiateStep} />
       </div>
-
-      <div className="lg:col-span-4 h-[500px]">
-        <LiveLog log={logEntries} />
+      <div className="md:col-span-2 lg:col-span-2 h-96">
+         <GlobalMap />
       </div>
-      
-      <div className="lg:col-span-5">
-        <AuditTimeline 
-          steps={auditSteps} 
-          onInitiateStep={handleInitiateStep} 
-        />
+      <div className="lg:col-span-1 h-96">
+        <LiveLog log={logs} />
       </div>
-
-      <div className="lg:col-span-7">
+      <div className="md:col-span-2 lg:col-span-4">
         <GeminiQuery />
       </div>
-    </div>
+    </main>
   );
 };
 
