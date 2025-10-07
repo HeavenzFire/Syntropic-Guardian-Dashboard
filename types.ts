@@ -20,3 +20,17 @@ export interface Stat {
     label: string;
     value: number;
 }
+
+export interface OutreachTarget {
+  outlet: string;
+  region: string;
+  contact: string;
+  notes: string;
+}
+
+export interface SearchResult {
+    category: string;
+    title: string;
+    content: string;
+    source: any;
+}

@@ -21,11 +21,9 @@ const getStatusStyles = (status: AuditStatus) => {
 interface AuditStepItemProps {
     step: AuditStep;
     isLast: boolean;
-    onInitiate: (id: string) => void;
-    canInitiate: boolean;
 }
 
-const AuditStepItem: React.FC<AuditStepItemProps> = ({ step, isLast, onInitiate, canInitiate }) => {
+const AuditStepItem: React.FC<AuditStepItemProps> = ({ step, isLast }) => {
     const { icon, color, bar } = getStatusStyles(step.status);
     return (
         <div className="flex">
@@ -41,13 +39,10 @@ const AuditStepItem: React.FC<AuditStepItemProps> = ({ step, isLast, onInitiate,
                 <p className={`mb-1 text-md font-bold ${color}`}>{step.title}</p>
                 <p className="text-sm text-gray-400">{step.description}</p>
                 <p className="text-xs text-cyan-300 mt-1">Metric: {step.metric}</p>
-                 {step.status === 'PENDING' && canInitiate && (
-                    <button
-                        onClick={() => onInitiate(step.id)}
-                        className="mt-2 px-3 py-1 text-xs bg-cyan-600/50 border border-cyan-400 text-white rounded-md hover:bg-cyan-500/70 transition orbitron"
-                    >
-                        INITIATE
-                    </button>
+                 {step.status === 'PENDING' && (
+                    <div className="mt-2 text-gray-400 text-xs orbitron">
+                        QUEUED FOR EXECUTION...
+                    </div>
                 )}
                 {step.status === 'IN_PROGRESS' && (
                      <div className="mt-2 text-yellow-400 text-xs flex items-center orbitron">
@@ -65,12 +60,9 @@ const AuditStepItem: React.FC<AuditStepItemProps> = ({ step, isLast, onInitiate,
 
 interface AuditTimelineProps {
     steps: AuditStep[];
-    onInitiateStep: (id: string) => void;
 }
 
-const AuditTimeline: React.FC<AuditTimelineProps> = ({ steps, onInitiateStep }) => {
-    const firstPendingIndex = steps.findIndex(step => step.status === 'PENDING');
-    
+const AuditTimeline: React.FC<AuditTimelineProps> = ({ steps }) => {
     return (
         <Card title="Audit Protocol" icon={<ShieldCheckIcon className="w-6 h-6" />}>
             <div>
@@ -79,8 +71,6 @@ const AuditTimeline: React.FC<AuditTimelineProps> = ({ steps, onInitiateStep }) 
                         key={step.id} 
                         step={step} 
                         isLast={index === steps.length - 1}
-                        onInitiate={onInitiateStep}
-                        canInitiate={index === firstPendingIndex}
                     />
                 ))}
             </div>

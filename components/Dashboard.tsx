@@ -1,51 +1,35 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import StatsPanel from './StatsPanel';
 import AuditTimeline from './AuditTimeline';
 import LiveLog from './LiveLog';
 import GlobalMap from './GlobalMap';
 import GeminiQuery from './GeminiQuery';
-import { AUDIT_STEPS_DATA, INITIAL_LOGS } from '../constants';
-import { AuditStep, LogEntry, LogLevel } from '../types';
-import { executeAuditStep } from '../services/geminiService';
+import OutreachProtocol from './OutreachProtocol';
+import { AuditStep, LogEntry } from '../types';
 
-const Dashboard: React.FC = () => {
-  const [steps, setSteps] = useState<AuditStep[]>(AUDIT_STEPS_DATA);
-  const [logs, setLogs] = useState<LogEntry[]>(
-    INITIAL_LOGS.map(log => ({ ...log, timestamp: Date.now() }))
-  );
-  
-  const addLog = useCallback((level: LogLevel, message: string) => {
-    setLogs(prev => [...prev, { timestamp: Date.now(), level, message }]);
-  }, []);
+interface DashboardProps {
+  steps: AuditStep[];
+  logs: LogEntry[];
+  onInitiateStep: (id: string) => void;
+}
 
-  const handleInitiateStep = useCallback(async (id: string) => {
-    const stepIndex = steps.findIndex(s => s.id === id);
-    if (stepIndex === -1) return;
-
-    const stepToRun = steps[stepIndex];
-    
-    setSteps(prev => prev.map(s => s.id === id ? { ...s, status: 'IN_PROGRESS' } : s));
-    addLog('INFO', `Initiating Audit Step: ${stepToRun.title}`);
-
-    try {
-        const resultJson = await executeAuditStep(stepToRun);
-        const result = JSON.parse(resultJson);
-
-        result.logs.forEach((log: {level: LogLevel, message: string}) => {
-            addLog(log.level, log.message);
-        });
-        addLog('INFO', `Step Summary: ${result.summary}`);
-
-        setSteps(prev => prev.map(s => s.id === id ? { ...s, status: result.status } : s));
-        addLog('INFO', `Audit Step "${stepToRun.title}" completed with status: ${result.status}.`);
-
-    } catch (error) {
-        console.error("Failed to execute audit step:", error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        addLog('CRITICAL', `Execution failed for step "${stepToRun.title}": ${errorMessage}`);
-        setSteps(prev => prev.map(s => s.id === id ? { ...s, status: 'FLAGGED' } : s));
+const Dashboard: React.FC<DashboardProps> = ({ steps, logs, onInitiateStep }) => {
+  useEffect(() => {
+    const isStepInProgress = steps.some(s => s.status === 'IN_PROGRESS');
+    if (isStepInProgress) {
+        return; 
     }
-  }, [steps, addLog]);
+
+    const nextStep = steps.find(s => s.status === 'PENDING');
+    if (nextStep) {
+        const timer = setTimeout(() => {
+            onInitiateStep(nextStep.id);
+        }, 3000); 
+
+        return () => clearTimeout(timer);
+    }
+  }, [steps, onInitiateStep]);
+
 
   return (
     <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -53,7 +37,7 @@ const Dashboard: React.FC = () => {
         <StatsPanel />
       </div>
       <div className="md:col-span-2 lg:col-span-1 row-span-2">
-        <AuditTimeline steps={steps} onInitiateStep={handleInitiateStep} />
+        <AuditTimeline steps={steps} />
       </div>
       <div className="md:col-span-2 lg:col-span-2 h-96">
          <GlobalMap />
@@ -61,8 +45,11 @@ const Dashboard: React.FC = () => {
       <div className="lg:col-span-1 h-96">
         <LiveLog log={logs} />
       </div>
-      <div className="md:col-span-2 lg:col-span-4">
+      <div className="md:col-span-2 lg:col-span-2">
         <GeminiQuery />
+      </div>
+      <div className="md:col-span-2 lg:col-span-2">
+        <OutreachProtocol />
       </div>
     </main>
   );
