@@ -1,12 +1,12 @@
-
 import React, { useState } from 'react';
 import Card from './Card';
 import { getAiAnalysis } from '../services/geminiService';
 import { BrainCircuitIcon } from './icons';
+import { INITIAL_AI_RESPONSE } from '../constants';
 
 const GeminiQuery: React.FC = () => {
   const [query, setQuery] = useState<string>('');
-  const [response, setResponse] = useState<string>('');
+  const [response, setResponse] = useState<string>(INITIAL_AI_RESPONSE);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
