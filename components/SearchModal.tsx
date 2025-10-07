@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { SearchIcon } from './icons';
 import { AuditStep, LogEntry, Stat, OutreachTarget, SearchResult } from '../types';
@@ -12,11 +13,16 @@ interface SearchModalProps {
   outreachTargets: OutreachTarget[];
 }
 
+const escapeRegExp = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+};
+
 const HighlightedText: React.FC<{ text: string; highlight: string }> = ({ text, highlight }) => {
   if (!highlight.trim()) {
     return <span>{text}</span>;
   }
-  const regex = new RegExp(`(${highlight})`, 'gi');
+  const safeHighlight = escapeRegExp(highlight);
+  const regex = new RegExp(`(${safeHighlight})`, 'gi');
   const parts = text.split(regex);
   return (
     <span>
